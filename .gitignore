@@ -1,0 +1,29 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Streamlit
+.streamlit/
+
+# Vector database
+chroma_db/
+chroma.sqlite3
+
+# Local data
+uploaded_files.json
+md5.text
+chat_history/
+
+# Env
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+chroma_db_v2/

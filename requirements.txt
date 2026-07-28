@@ -1,0 +1,11 @@
+﻿# 核心依赖
+streamlit
+langchain
+langchain-community
+langchain-chroma
+langchain-text-splitters
+chromadb
+dashscope
+python-dotenv
+python-multipart
+pillow
