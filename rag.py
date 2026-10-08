@@ -34,11 +34,15 @@ class RagService(object):
         """获取最终的执行链"""
 
         from hybrid_retriever import HybridRetriever
-        if hasattr(self.vector_service, 'vector_store') and config.use_hybrid:
-            hybrid = HybridRetriever(self.vector_service.get_retriever(), self.vector_service.vector_store)
-            retriever = RunnableLambda(lambda q: hybrid.invoke(q))
-        else:
-            retriever = self.vector_service.get_retriever()
+        vector_retriever = self.vector_service.get_retriever(k=config.vector_top_k)
+        self.hybrid = None
+        if hasattr(self.vector_service, "vector_store"):
+            self.hybrid = HybridRetriever(vector_retriever, self.vector_service.vector_store)
+        retriever = (
+            RunnableLambda(lambda q: self.hybrid.invoke(q))
+            if self.hybrid is not None and config.use_hybrid else vector_retriever
+        )
+        self.retriever = retriever
 
         def format_document(docs: list[Document]):
             if not docs:
@@ -50,9 +54,11 @@ class RagService(object):
 
             return formatted_str
 
-        def format_for_retriever(value: dict)->str:
-
-            return value["input"]
+        def retrieve_for_context(value: dict) -> list[Document]:
+            # 页面可传入本次检索的文档，让答案和展示的来源使用同一批片段。
+            if "retrieved_docs" in value:
+                return value["retrieved_docs"]
+            return self.retrieve(value["input"])
 
         def format_for_prompt_template(value):
             # {input, context, history}
@@ -66,7 +72,7 @@ class RagService(object):
         chain = (
             {
                 "input": RunnablePassthrough(),
-                "context": RunnableLambda(format_for_retriever) | retriever | format_document
+                "context": RunnableLambda(retrieve_for_context) | format_document
             }| RunnableLambda(format_for_prompt_template) |self.prompt_template |self.chat_model | StrOutputParser()
         )
 
@@ -78,6 +84,20 @@ class RagService(object):
         )
 
         return conversation_chain
+
+    def retrieve(self, question: str, mode: str | None = None) -> list[Document]:
+        """检索一次，返回用于生成回答的原始文档片段。"""
+        if mode is None:
+            return self.retriever.invoke(question)
+        if self.hybrid is None:
+            raise RuntimeError("当前向量存储不支持切换检索方式")
+        if mode == "hybrid":
+            return self.hybrid.invoke(question)
+        if mode == "vector":
+            return self.hybrid.search_vector(question)
+        if mode == "bm25":
+            return self.hybrid.search_bm25(question)
+        raise ValueError(f"不支持的检索方式：{mode}")
 
 
 if __name__ == '__main__':

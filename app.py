@@ -1,4 +1,4 @@
-"""Streamlit entry point for the HybridRAG knowledge assistant."""
+"""Streamlit entry point for the DocFusion RAG knowledge assistant."""
 
 import json
 import os
@@ -15,7 +15,7 @@ from ui_styles import APP_CSS
 
 load_dotenv()
 
-st.set_page_config(page_title="HybridRAG · 知识问答", page_icon="🔎", layout="wide")
+st.set_page_config(page_title="DocFusion RAG · 混合检索知识库", page_icon="🔎", layout="wide")
 st.markdown(APP_CSS, unsafe_allow_html=True)
 
 FILENAMES_PATH = config.BASE_DIR / "uploaded_files.json"
@@ -41,6 +41,16 @@ def start_new_conversation() -> None:
     st.session_state["messages"] = []
 
 
+def show_sources(sources: list[dict[str, str]]) -> None:
+    if not sources:
+        return
+    with st.expander(f"查看检索来源（{len(sources)} 个片段）"):
+        st.caption("以下是本次回答使用的检索片段，仍需结合原文核对答案。")
+        for index, source in enumerate(sources, start=1):
+            st.write(f"{index}. {source['name']}")
+            st.text(source["preview"])
+
+
 if "session_id" not in st.session_state:
     st.session_state["session_id"] = uuid.uuid4().hex
 if "messages" not in st.session_state:
@@ -60,11 +70,21 @@ doc_count = st.session_state["kb_service"].chroma._collection.count() if model_r
 with st.sidebar:
     st.markdown(
         '<div class="side-brand"><span class="brand-icon">✦</span>'
-        '<div><strong>HybridRAG</strong><small>本地知识库</small></div></div>',
+        '<div><strong>DocFusion RAG</strong><small>混合检索知识库</small></div></div>',
         unsafe_allow_html=True,
     )
     st.metric("已入库片段", doc_count)
     st.caption(f"已记录 {len(st.session_state['uploaded_files'])} 个文档 · 支持 TXT 格式")
+    mode_label = st.selectbox(
+        "检索方式",
+        ("混合检索（默认）", "仅向量检索", "仅 BM25 关键词"),
+        help="切换本次提问使用的检索方式，方便观察三种方式的差异。",
+    )
+    mode = {
+        "混合检索（默认）": "hybrid",
+        "仅向量检索": "vector",
+        "仅 BM25 关键词": "bm25",
+    }[mode_label]
     st.divider()
     st.subheader("添加知识")
     uploaded_file = st.file_uploader(
@@ -129,7 +149,7 @@ elif doc_count == 0:
 
 if not st.session_state["messages"]:
     st.markdown(
-        '<div class="welcome-card"><span>✳</span><strong>你好，我是 HybridRAG 知识助手</strong>'
+        '<div class="welcome-card"><span>✳</span><strong>你好，我是 DocFusion RAG 知识助手</strong>'
         '<p>可以问我文档中的具体信息，例如“身高 180 厘米推荐什么尺码？”</p></div>',
         unsafe_allow_html=True,
     )
@@ -137,6 +157,10 @@ if not st.session_state["messages"]:
 for message in st.session_state["messages"]:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message["role"] == "assistant":
+            if message.get("mode"):
+                st.caption(f"检索方式：{message['mode']}")
+            show_sources(message.get("sources", []))
 
 if question := st.chat_input("输入与已上传文档相关的问题…", disabled=not model_ready or doc_count == 0):
     st.session_state["messages"].append({"role": "user", "content": question})
@@ -148,14 +172,26 @@ if question := st.chat_input("输入与已上传文档相关的问题…", disab
         chunks = []
         try:
             with st.spinner("正在检索资料并生成回答…"):
+                docs = st.session_state["rag"].retrieve(question, mode=mode)
                 session_config = {"configurable": {"session_id": st.session_state["session_id"]}}
                 for chunk in st.session_state["rag"].chain.stream(
-                    {"input": question}, session_config
+                    {"input": question, "retrieved_docs": docs}, session_config
                 ):
                     chunks.append(chunk)
                     output.markdown("".join(chunks) + "▌")
             answer = "".join(chunks) or "没有生成回答，请换一种问法重试。"
             output.markdown(answer)
-            st.session_state["messages"].append({"role": "assistant", "content": answer})
+            st.caption(f"检索方式：{mode_label}")
+            sources = [
+                {
+                    "name": str((doc.metadata or {}).get("source") or "未记录文件名"),
+                    "preview": doc.page_content,
+                }
+                for doc in docs
+            ]
+            show_sources(sources)
+            st.session_state["messages"].append(
+                {"role": "assistant", "content": answer, "sources": sources, "mode": mode_label}
+            )
         except Exception:
             output.error("处理问题时出现错误，请检查模型配置或稍后重试。")

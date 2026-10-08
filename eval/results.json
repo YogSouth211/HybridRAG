@@ -1,0 +1,260 @@
+{
+  "question_count": 24,
+  "top_k": 3,
+  "summary": {
+    "vector": {
+      "Recall@3": 1.0,
+      "MRR": 0.861
+    },
+    "bm25": {
+      "Recall@3": 1.0,
+      "MRR": 1.0
+    },
+    "hybrid_rrf": {
+      "Recall@3": 1.0,
+      "MRR": 0.896
+    }
+  },
+  "cases": [
+    {
+      "question": "身高160厘米、体重80斤穿什么码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码S",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "身高165厘米、体重100斤推荐尺码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码M",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "身高170厘米、体重125斤推荐尺码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码L",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "175厘米、140斤适合哪一档尺码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码XL",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "180厘米、150斤建议买几XL？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码2XL",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "182厘米、170斤应选什么码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码3XL",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "185厘米、190斤推荐什么尺码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码4XL",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "身高超过190厘米且体重超过210斤选什么码？",
+      "source": "尺码推荐.txt",
+      "phrase": "建议尺码5XL",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "春季纯棉衬衫清洗水温最高多少？",
+      "source": "洗涤养护.txt",
+      "phrase": "纯棉材质（春季衬衫",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "薄牛仔裤清洗后怎样晾干？",
+      "source": "洗涤养护.txt",
+      "phrase": "薄牛仔材质（春季牛仔裤",
+      "rank": {
+        "vector": 3,
+        "bm25": 1,
+        "hybrid_rrf": 2
+      }
+    },
+    {
+      "question": "针织棉衣服能用力拧绞吗？",
+      "source": "洗涤养护.txt",
+      "phrase": "针织棉材质（春季针织衫",
+      "rank": {
+        "vector": 3,
+        "bm25": 1,
+        "hybrid_rrf": 2
+      }
+    },
+    {
+      "question": "真丝连衣裙适合用什么方式洗？",
+      "source": "洗涤养护.txt",
+      "phrase": "真丝材质（夏季连衣裙",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "秋季羊毛衫手洗水温应控制多少？",
+      "source": "洗涤养护.txt",
+      "phrase": "羊毛/羊绒材质（秋季羊毛衫",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "冬季羽绒服水洗要注意什么？",
+      "source": "洗涤养护.txt",
+      "phrase": "羽绒服材质（冬季羽绒服",
+      "rank": {
+        "vector": 2,
+        "bm25": 1,
+        "hybrid_rrf": 2
+      }
+    },
+    {
+      "question": "厚羊毛大衣为什么不能机洗？",
+      "source": "洗涤养护.txt",
+      "phrase": "厚羊毛大衣材质（冬季羊毛大衣",
+      "rank": {
+        "vector": 2,
+        "bm25": 1,
+        "hybrid_rrf": 2
+      }
+    },
+    {
+      "question": "熨烫衣服前应先看哪里？",
+      "source": "洗涤养护.txt",
+      "phrase": "熨烫前查看衣物洗标",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "暖黄皮适合焦糖色还是荧光绿？",
+      "source": "颜色推荐.txt",
+      "phrase": "黄皮/暖黄皮：优先选暖色调",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "黑皮肤适合什么亮色？",
+      "source": "颜色推荐.txt",
+      "phrase": "黑皮：适合高饱和度亮色",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "日常通勤应该用哪些基础色？",
+      "source": "颜色推荐.txt",
+      "phrase": "日常通勤：以基础色为主",
+      "rank": {
+        "vector": 2,
+        "bm25": 1,
+        "hybrid_rrf": 2
+      }
+    },
+    {
+      "question": "商务会议选什么颜色更稳重？",
+      "source": "颜色推荐.txt",
+      "phrase": "正式场合（商务会议/面试）",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "穿衣显瘦该选深色还是亮色？",
+      "source": "颜色推荐.txt",
+      "phrase": "显瘦搭配：优先选深色系",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "上浅下深为什么显高？",
+      "source": "颜色推荐.txt",
+      "phrase": "显高搭配：上浅下深",
+      "rank": {
+        "vector": 2,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "春季衣服推荐哪些清新颜色？",
+      "source": "颜色推荐.txt",
+      "phrase": "春季：适合清新柔和的颜色",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    },
+    {
+      "question": "配饰和衣服同色系有什么效果？",
+      "source": "颜色推荐.txt",
+      "phrase": "同色系配饰：与服装颜色一致",
+      "rank": {
+        "vector": 1,
+        "bm25": 1,
+        "hybrid_rrf": 1
+      }
+    }
+  ]
+}

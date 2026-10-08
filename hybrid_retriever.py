@@ -84,22 +84,39 @@ class HybridRetriever:
         ranked = sorted(fused.values(), key=lambda item: item[1], reverse=True)
         return [doc for doc, _ in ranked[:config.final_top_k]]
 
+    def _rank_bm25(self, query: str, top_k: int) -> list[Document]:
+        query_terms = set(self._tokenize(query))
+        if not query_terms:
+            return []
+        scores = [(self._bm25_score(query_terms, i), i) for i in range(self.total_docs)]
+        scores.sort(key=lambda item: item[0], reverse=True)
+        return [
+            Document(
+                page_content=self.all_texts[i],
+                metadata=self.all_metadatas[i] if i < len(self.all_metadatas) and self.all_metadatas[i] else {},
+            )
+            for score, i in scores[:top_k] if score > 0
+        ]
+
+    def search_bm25(self, query: str, top_k: int = config.final_top_k) -> list[Document]:
+        """单独运行关键词检索，供模式切换和评估使用。"""
+        self._refresh_index()
+        return self._rank_bm25(query, top_k)
+
+    def search_vector(self, query: str, top_k: int = config.final_top_k) -> list[Document]:
+        """单独运行向量检索；底层检索器至少应返回 top_k 条。"""
+        self._refresh_index()
+        if not self.all_texts:
+            return []
+        return self.vector_retriever.invoke(query)[:top_k]
+
     def invoke(self, query: str) -> list[Document]:
         self._refresh_index()
         if not self.all_texts:
             return []
 
         vector_docs = self.vector_retriever.invoke(query)
-        query_terms = set(self._tokenize(query))
-        scores = [(self._bm25_score(query_terms, i), i) for i in range(self.total_docs)]
-        scores.sort(key=lambda item: item[0], reverse=True)
-        bm25_docs = [
-            Document(
-                page_content=self.all_texts[i],
-                metadata=self.all_metadatas[i] if i < len(self.all_metadatas) and self.all_metadatas[i] else {},
-            )
-            for score, i in scores[:config.bm25_top_k] if score > 0
-        ]
+        bm25_docs = self._rank_bm25(query, config.bm25_top_k)
         return self._rrf_merge(vector_docs, bm25_docs)
 
     def get_relevant_documents(self, query: str) -> list[Document]:

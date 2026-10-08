@@ -61,6 +61,16 @@ class HybridRetrieverTests(unittest.TestCase):
         retriever = HybridRetriever(FakeVectorRetriever(store), store)
         self.assertEqual(retriever.invoke("尺码"), [])
 
+    def test_single_retrieval_modes_use_the_same_documents(self):
+        store = FakeStore()
+        store.docs.extend([
+            Document(page_content="尺码推荐表", metadata={"source": "sizes.txt"}),
+            Document(page_content="洗涤说明", metadata={"source": "care.txt"}),
+        ])
+        retriever = HybridRetriever(FakeVectorRetriever(store), store)
+        self.assertEqual(retriever.search_bm25("尺码", 1)[0].metadata["source"], "sizes.txt")
+        self.assertEqual(retriever.search_vector("尺码", 1)[0].metadata["source"], "sizes.txt")
+
     def test_two_chroma_clients_see_new_upload(self):
         client = chromadb.EphemeralClient()
         collection_name = f"rag_{uuid4().hex}"

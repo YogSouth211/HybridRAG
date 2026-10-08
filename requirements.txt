@@ -1,5 +1,8 @@
 ﻿# 核心依赖
 streamlit
+fastapi
+uvicorn
+httpx  # FastAPI 的 TestClient 检查使用
 langchain
 langchain-community
 langchain-chroma

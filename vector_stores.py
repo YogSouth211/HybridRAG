@@ -14,9 +14,10 @@ class VectorStoreService(object):
             persist_directory=config.persist_directory,
         )
 
-    def get_retriever(self):
+    def get_retriever(self, k=None):
             """返回向量检索器，方便加入chain"""
-            k = config.vector_top_k if config.use_hybrid else config.final_top_k
+            if k is None:
+                k = config.vector_top_k if config.use_hybrid else config.final_top_k
             return self.vector_store.as_retriever(search_kwargs={"k": k})
 
 if __name__ =='__main__':
