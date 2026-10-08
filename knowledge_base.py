@@ -50,7 +50,7 @@ class KnowledgeBaseService(object):
 
         self.chroma=Chroma(          # 向量存储的示例 Chroma向量库对象
             collection_name=config.collection_name,      #数据库表名
-            embedding_function=DashScopeEmbeddings(model="text-embedding-v4"),
+            embedding_function=DashScopeEmbeddings(model=config.embedding_model_name),
             persist_directory=config.persist_directory,   #数据库本地存储文件夹
         )      # 向量存储的实例，Chroma向量库对象
         self.spliter=RecursiveCharacterTextSplitter(  # 文本分割器的对象
@@ -60,23 +60,10 @@ class KnowledgeBaseService(object):
             length_function=len,                      # 使用python自带的len函数做长度统计的依赖
         )      # 文本分割器的对象
 
-    def _track_filename(self, name):
-        try:
-            path = "./uploaded_files.json"
-            files = []
-            import os
-            if os.path.exists(path):
-                with open(path, "r", encoding="utf-8") as f:
-                    files = json.load(f)
-            if name not in files:
-                files.append(name)
-                with open(path, "w", encoding="utf-8") as f:
-                    json.dump(files, f, ensure_ascii=False)
-        except:
-            pass
-
     def upload_by_str(self,data:str,filename):
         """将传入的字符串，进行向量化，存入向量数据库中"""
+        if not data.strip():
+            return "[Invalid] 文档内容为空"
         # 先得到出传入的字符串的md5值
         md5_hex=get_string_md5(data)
         if check_md5(md5_hex):

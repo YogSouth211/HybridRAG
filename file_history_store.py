@@ -1,12 +1,16 @@
 import os
 import json
+import re
+from pathlib import Path
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
 from typing import Sequence
 
 
 def get_history(session_id):
-    return FileChatMessageHistory(session_id, "./chat_history")
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", session_id):
+        raise ValueError("Invalid conversation ID")
+    return FileChatMessageHistory(session_id, Path(__file__).resolve().parent / "chat_history")
 
 class FileChatMessageHistory(BaseChatMessageHistory):
 

@@ -7,7 +7,8 @@ venv/
 env/
 
 # Streamlit
-.streamlit/
+.streamlit/*
+!.streamlit/config.toml
 
 # Vector database
 chroma_db/
@@ -20,6 +21,7 @@ chat_history/
 
 # Env
 .env
+*.log
 
 # IDE
 .idea/

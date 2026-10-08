@@ -1,98 +1,106 @@
-"""三重混合检索器：BM25关键词 + 向量语义 + RRF融合排序"""
+"""Combine semantic and BM25 retrieval with reciprocal rank fusion."""
+
 import math
 import re
-from collections import Counter, OrderedDict
-from typing import List
+from collections import Counter
+
 from langchain_core.documents import Document
+
 import config_data as config
 
 
 class HybridRetriever:
-    """混合检索器，融合向量检索和BM25关键词检索，通过RRF排序"""
+    """Small local corpus retriever; refresh its keyword index when documents change."""
 
     def __init__(self, vector_retriever, vector_store):
         self.vector_retriever = vector_retriever
+        self.vector_store = vector_store
+        self.all_texts: list[str] = []
+        self.all_metadatas: list[dict] = []
+        self.doc_term_counts: list[Counter] = []
+        self.doc_lengths: list[int] = []
+        self.df: Counter = Counter()
+        self.total_docs = 0
+        self.avg_doc_length = 0.0
+        self._refresh_index()
 
-        # 从Chroma获取所有文档文本，用于关键词检索
-        all_data = vector_store.get(include=["documents", "metadatas"])
-        self.all_texts = all_data.get("documents", []) if all_data else []
-        self.all_metadatas = all_data.get("metadatas", []) if all_data else []
-        self._build_index()
+    @staticmethod
+    def _tokenize(text: str) -> list[str]:
+        """Split English words and numbers; use characters for simple Chinese matching."""
+        return re.findall(r"[a-z0-9_]+|[\u4e00-\u9fff]", text.lower())
 
-    def _build_index(self):
-        """构建BM25索引"""
+    def _refresh_index(self) -> None:
+        # The Streamlit upload service writes to the same Chroma collection later.
+        data = self.vector_store.get(include=["documents", "metadatas"])
+        texts = data.get("documents") or []
+        metadatas = data.get("metadatas") or []
+        if texts == self.all_texts and metadatas == self.all_metadatas:
+            return
+
+        self.all_texts = texts
+        self.all_metadatas = metadatas
+        self.total_docs = len(texts)
         self.doc_term_counts = []
+        self.doc_lengths = []
         self.df = Counter()
-        self.total_docs = len(self.all_texts)
-        for text in self.all_texts:
-            terms = self._tokenize(text)
+        for content in texts:
+            terms = self._tokenize(content or "")
             self.doc_term_counts.append(Counter(terms))
-            for term in set(terms):
-                self.df[term] += 1
+            self.doc_lengths.append(len(terms))
+            self.df.update(set(terms))
+        self.avg_doc_length = sum(self.doc_lengths) / max(self.total_docs, 1)
 
-    def _tokenize(self, text):
-        """简易分词"""
-        tokens = re.findall(r"[\w]+", text.lower())
-        chinese_chars = re.findall(r"[\u4e00-\u9fff]", text)
-        return tokens + chinese_chars
-
-    def _bm25_score(self, query_terms, doc_idx):
-        """BM25评分"""
-        doc_len = len(self._tokenize(self.all_texts[doc_idx]))
-        total_len = sum(len(self._tokenize(t)) for t in self.all_texts)
-        avg_len = total_len / max(self.total_docs, 1)
+    def _bm25_score(self, query_terms: set[str], doc_idx: int) -> float:
         k1, b = 1.5, 0.75
-
-        score = 0
+        doc_len = self.doc_lengths[doc_idx]
+        score = 0.0
         for term in query_terms:
-            if term in self.doc_term_counts[doc_idx]:
-                tf = self.doc_term_counts[doc_idx][term]
-                idf = math.log(
-                    (self.total_docs - self.df.get(term, 0) + 0.5)
-                    / (self.df.get(term, 0) + 0.5) + 1
-                )
-                score += idf * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * doc_len / max(avg_len, 1)))
+            tf = self.doc_term_counts[doc_idx][term]
+            if not tf:
+                continue
+            idf = math.log(
+                1 + (self.total_docs - self.df[term] + 0.5) / (self.df[term] + 0.5)
+            )
+            denominator = tf + k1 * (1 - b + b * doc_len / max(self.avg_doc_length, 1))
+            score += idf * tf * (k1 + 1) / denominator
         return score
 
-    def _rrf_merge(self, vector_docs, bm25_docs):
-        """RRF融合排序（Reciprocal Rank Fusion）"""
-        all_items = OrderedDict()
-        for rank, doc in enumerate(vector_docs):
-            all_items[id(doc)] = {"doc": doc, "score": 1.0 / (60 + rank + 1)}
-        for rank, doc in enumerate(bm25_docs):
-            doc_id = id(doc)
-            if doc_id in all_items:
-                all_items[doc_id]["score"] += 1.0 / (60 + rank + 1)
-            else:
-                all_items[doc_id] = {"doc": doc, "score": 1.0 / (60 + rank + 1)}
-        sorted_items = sorted(all_items.values(), key=lambda x: x["score"], reverse=True)
-        return [item["doc"] for item in sorted_items[:config.final_top_k]]
+    @staticmethod
+    def _doc_key(doc: Document) -> tuple[str, str | None]:
+        metadata = doc.metadata or {}
+        return doc.page_content, metadata.get("source")
 
-    def invoke(self, query: str) -> List[Document]:
-        """执行混合检索"""
+    def _rrf_merge(self, vector_docs: list[Document], bm25_docs: list[Document]) -> list[Document]:
+        """Add rank scores for the same content and source across both result lists."""
+        fused: dict[tuple[str, str | None], tuple[Document, float]] = {}
+        for docs in (vector_docs, bm25_docs):
+            for rank, doc in enumerate(docs, start=1):
+                key = self._doc_key(doc)
+                previous = fused.get(key)
+                fused[key] = (
+                    previous[0] if previous else doc,
+                    (previous[1] if previous else 0.0) + 1.0 / (60 + rank),
+                )
+        ranked = sorted(fused.values(), key=lambda item: item[1], reverse=True)
+        return [doc for doc, _ in ranked[:config.final_top_k]]
+
+    def invoke(self, query: str) -> list[Document]:
+        self._refresh_index()
         if not self.all_texts:
             return []
 
-        # 1) 向量检索（找语义相似的）
-        vector_results = self.vector_retriever.invoke(query)
+        vector_docs = self.vector_retriever.invoke(query)
+        query_terms = set(self._tokenize(query))
+        scores = [(self._bm25_score(query_terms, i), i) for i in range(self.total_docs)]
+        scores.sort(key=lambda item: item[0], reverse=True)
+        bm25_docs = [
+            Document(
+                page_content=self.all_texts[i],
+                metadata=self.all_metadatas[i] if i < len(self.all_metadatas) and self.all_metadatas[i] else {},
+            )
+            for score, i in scores[:config.bm25_top_k] if score > 0
+        ]
+        return self._rrf_merge(vector_docs, bm25_docs)
 
-        # 2) BM25关键词检索（找关键词匹配的）
-        query_terms = self._tokenize(query)
-        bm25_results = []
-        if query_terms:
-            scored = [(i, self._bm25_score(query_terms, i)) for i in range(self.total_docs)]
-            scored.sort(key=lambda x: x[1], reverse=True)
-            top = scored[:config.bm25_top_k]
-            bm25_results = [
-                Document(
-                    page_content=self.all_texts[i],
-                    metadata=(self.all_metadatas[i] if i < len(self.all_metadatas) and self.all_metadatas[i] else {})
-                ) for i, s in top if s > 0
-            ]
-
-        # 3) RRF融合排序
-        return self._rrf_merge(vector_results, bm25_results)
-
-    def get_relevant_documents(self, query: str) -> List[Document]:
+    def get_relevant_documents(self, query: str) -> list[Document]:
         return self.invoke(query)
-
