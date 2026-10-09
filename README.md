@@ -53,7 +53,7 @@ python -m streamlit run app.py
 ## 项目结构
 
 ```
-HybridRAG/                   # GitHub 仓库目录名仍保留原名
+DocFusion-RAG/               # GitHub 仓库根目录
 ├── app.py                 # 主入口（聊天 + 上传）
 ├── api.py                 # 可选 FastAPI 问答接口
 ├── rag.py                 # RAG 链核心
